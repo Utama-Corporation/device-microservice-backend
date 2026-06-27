@@ -225,7 +225,7 @@ router.get("/log/summary", getPrinterLogSummary);
  *         name: identifier
  *         required: true
  *         schema:
-  *           type: string
+ *           type: string
  *         description: MAC address or unique ID of the printer
  *     responses:
  *       200:
@@ -272,6 +272,9 @@ router.get("/log/summary", getPrinterLogSummary);
  *               identifier:
  *                 type: string
  *                 description: MAC address or unique ID of the printer
+ *               remark:
+ *                 type: string
+ *                 description: Catatan/alasan reset printer
  *     responses:
  *       200:
  *         description: Printer reset performed successfully

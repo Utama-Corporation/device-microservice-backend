@@ -35,7 +35,11 @@ const startOfLocalDay = (date) =>
   );
 
 const buildDateRange = ({ from, to, fallbackStart } = {}) => {
-  const start = from ? parseDateOnly(from) : fallbackStart ? startOfLocalDay(fallbackStart) : null;
+  const start = from
+    ? parseDateOnly(from)
+    : fallbackStart
+      ? startOfLocalDay(fallbackStart)
+      : null;
   const end = to ? parseDateOnly(to) : new Date();
 
   if (!start || !end) {
@@ -48,7 +52,11 @@ const buildDateRange = ({ from, to, fallbackStart } = {}) => {
 
   const endExclusive = new Date(end.getTime() + DAY_MS);
   const dates = [];
-  for (let cursor = new Date(start.getTime()); cursor < endExclusive; cursor = new Date(cursor.getTime() + DAY_MS)) {
+  for (
+    let cursor = new Date(start.getTime());
+    cursor < endExclusive;
+    cursor = new Date(cursor.getTime() + DAY_MS)
+  ) {
     dates.push(formatDateInTimeZone(cursor));
   }
 
@@ -395,7 +403,8 @@ class PrinterService {
         totalPrintCount: item.totalPrintCount,
         totalLogEntries: item.totalLogEntries,
         users: item.users.sort(
-          (a, b) => b.printCount - a.printCount || a.printBy.localeCompare(b.printBy),
+          (a, b) =>
+            b.printCount - a.printCount || a.printBy.localeCompare(b.printBy),
         ),
       };
     });
@@ -424,18 +433,25 @@ class PrinterService {
     }
 
     const skip = (page - 1) * limit;
-    const [resetLogs, total] = await Promise.all([
+    const [resetLogs, total, avgResult] = await Promise.all([
       DeviceMaintenance.find({ deviceId: device._id })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
       DeviceMaintenance.countDocuments({ deviceId: device._id }),
+      DeviceMaintenance.aggregate([
+        { $match: { deviceId: device._id, printCountAtReset: { $ne: null } } },
+        { $group: { _id: null, avg: { $avg: "$printCountAtReset" } } },
+      ]),
     ]);
 
-    return { device, resetLogs, total, page, limit };
+    const avgPrintCountAtReset =
+      avgResult.length > 0 ? Math.round(avgResult[0].avg) : null;
+
+    return { device, resetLogs, total, page, limit, avgPrintCountAtReset };
   }
 
-  async performReset(printerId) {
+  async performReset(printerId, remark = null) {
     const device = await Device.findOne({
       identifier: printerId,
       deviceType: "PRINTER",
@@ -445,6 +461,7 @@ class PrinterService {
     }
 
     // Reset lastMaintenancePrint to current totalPrint and status to NORMAL
+    const printCountAtReset = device.totalPrint - device.lastMaintenancePrint;
     device.lastMaintenancePrint = device.totalPrint;
     device.status = "NORMAL";
     await device.save();
@@ -453,6 +470,8 @@ class PrinterService {
     const resetLog = new DeviceMaintenance({
       deviceId: device._id,
       doneBy: "SYSTEM",
+      remark,
+      printCountAtReset,
     });
     await resetLog.save();
 

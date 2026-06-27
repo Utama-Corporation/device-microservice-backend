@@ -339,7 +339,8 @@ export const getPrinterLogSummary = async (req, res) => {
     if (error.message === "Invalid date range") {
       return res.status(400).json({
         error: "Invalid date range",
-        message: "from must be less than or equal to to and must be in YYYY-MM-DD format",
+        message:
+          "from must be less than or equal to to and must be in YYYY-MM-DD format",
       });
     }
     console.error("Error getting printer log summary:", error);
@@ -369,6 +370,7 @@ export const getResetLogs = async (req, res) => {
       total,
       page: currentPage,
       limit: currentLimit,
+      avgPrintCountAtReset,
     } = await printerService.getResetLogs(
       normalizeIdentifier(resolvedIdentifier),
       { page: parsedPage, limit: parsedLimit },
@@ -379,6 +381,7 @@ export const getResetLogs = async (req, res) => {
         id: device._id,
         identifier: device.identifier,
         name: device.name ?? null,
+        avgPrintCountAtReset,
       },
       pagination: {
         page: currentPage,
@@ -390,6 +393,8 @@ export const getResetLogs = async (req, res) => {
         id: m._id,
         doneBy: m.doneBy,
         doneAt: m.doneAt,
+        remark: m.remark ?? null,
+        printCountAtReset: m.printCountAtReset ?? null,
       })),
     });
   } catch (error) {
@@ -403,15 +408,19 @@ export const getResetLogs = async (req, res) => {
 
 export const performPrinterReset = async (req, res) => {
   try {
-    const { identifier, printerId, mac } = req.body;
+    const { identifier, printerId, mac, remark } = req.body;
     const resolvedIdentifier = identifier ?? printerId ?? mac;
 
     // Simple validation
     if (!resolvedIdentifier || typeof resolvedIdentifier !== "string") {
       return res.status(400).json({ error: "Invalid identifier" });
     }
+    if (!remark || typeof remark !== "string") {
+      return res.status(400).json({ error: "Remark is required" });
+    }
     const result = await printerService.performReset(
       normalizeIdentifier(resolvedIdentifier),
+      remark,
     );
     res.json({
       message: "Printer reset performed successfully",

@@ -15,6 +15,15 @@ const deviceMaintenanceSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    remark: {
+      type: String,
+      default: null,
+      trim: true,
+    },
+    printCountAtReset: {
+      type: Number,
+      default: null,
+    },
   },
   {
     timestamps: true,
